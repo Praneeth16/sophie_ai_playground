@@ -15,7 +15,7 @@ from pillar.employer_branding import pillar_page as employer_branding
 
 # Configure the page
 st.set_page_config(
-    page_title="AI-Powered Recruitment & HR Solutions | Talent Acquisition Copilot",
+    page_title="HR - CoPilot",
     page_icon="artifacts/mpg.jpeg",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -128,7 +128,7 @@ def render_pillar_overview_cards():
 # Navigation setup with grouped pages and dropdowns
 def setup_navigation():
     pages = {
-        "HR-AI": [
+        "HR Copilot": [
             st.Page(home_page, title="Home")
         ],
         "Sales": [
@@ -185,7 +185,7 @@ def setup_navigation():
 def render_hero():
     # Main Hero Content
     with st.container():
-        st.markdown('<div class="hero-title">HR-AI that thinks like your Top Recruiter</div>', unsafe_allow_html=True)
+        st.markdown('<div class="hero-title">AI that thinks like your Top Recruiter</div>', unsafe_allow_html=True)
         st.markdown('<div class="hero-subtitle">Source faster. Place better. Scale infinitely.</div>', unsafe_allow_html=True)
         st.markdown("""
         <div class="hero-description">
