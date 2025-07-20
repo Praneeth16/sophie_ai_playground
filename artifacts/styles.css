@@ -1,0 +1,424 @@
+/* Font imports - using web fonts as alternatives for custom fonts */
+@import url('https://fonts.googleapis.com/css2?family=Crimson+Text:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@400;500;600;700;800;900&display=swap');
+
+/* Font family definitions */
+:root {
+    --header-font: "Galaxie Copernicus Book", "Playfair Display", serif;
+    --main-text-font: "Styrene B", "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    --body-text-font: "Tiempo Text", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+    --ui-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Global font applications */
+.main .block-container {
+    font-family: var(--body-text-font);
+}
+
+/* Header styling with custom font */
+h1, h2, h3, h4, h5, h6, .hero-title, .hero-subtitle, .cta-title {
+    font-family: var(--header-font) !important;
+    color: #374151 !important;
+}
+
+/* Main text areas */
+p, .main-text, .pillar-description {
+    font-family: var(--main-text-font) !important;
+}
+
+/* UI elements */
+.stButton, .stSelectbox, .stTextInput, .stTextArea, [data-testid="stSidebar"] {
+    font-family: var(--ui-font) !important;
+}
+
+/* Navigation Bar Styling */
+/* Hide sidebar navigation */
+[data-testid="stSidebarNav"] {
+    display: none;
+}
+
+/* Disable all hiding rules - they interfere with navigation
+[data-testid="stToolbar"],
+[data-testid="stDecoration"],
+[data-testid="stStatusWidget"],
+[data-testid="stMainMenu"] {
+    display: none !important;
+}
+
+button[title*="Deploy" i],
+button[aria-label*="Deploy" i],
+.stDeployButton {
+    display: none !important;
+}
+*/
+
+/* Force navigation to be visible */
+[data-testid="stNavigation"],
+[data-testid="stNavigation"] *,
+nav,
+[role="navigation"],
+.stApp [data-testid="stNavigation"],
+.stApp [data-testid="stNavigation"] a,
+.stApp [data-testid="stNavigation"] button {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Style the top navigation container with glass morphism */
+[data-testid="stHeader"],
+header {
+    background: rgba(255, 255, 255, 0.95) !important;
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+    padding: 0.75rem 0 !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 1000 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    width: 100% !important;
+}
+
+/* Only center navigation, not entire header */
+[data-testid="stNavigation"] {
+    text-align: center !important;
+    width: 100% !important;
+}
+
+[data-testid="stNavigation"] div {
+    text-align: center !important;
+    margin: 0 auto !important;
+    display: inline-block !important;
+}
+
+[data-testid="stNavigation"] a,
+[data-testid="stNavigation"] button {
+    display: inline-block !important;
+    margin: 0 1rem !important;
+}
+
+/* Style navigation links */
+[data-testid="stNavigation"] a,
+[data-testid="stNavigation"] button {
+    color: #374151 !important;
+    text-decoration: none !important;
+    font-weight: 500 !important;
+    font-size: 0.95rem !important;
+    padding: 0.5rem 1.25rem !important;
+    border-radius: 8px !important;
+    transition: all 0.2s ease !important;
+    font-family: var(--ui-font) !important;
+    background: transparent !important;
+    border: none !important;
+    cursor: pointer !important;
+    white-space: nowrap !important;
+}
+
+/* Hover effects */
+[data-testid="stNavigation"] a:hover,
+[data-testid="stNavigation"] button:hover {
+    background-color: rgba(212, 137, 106, 0.1) !important;
+    color: #d4896a !important;
+    transform: translateY(-1px) !important;
+}
+
+/* Active page styling */
+[data-testid="stNavigation"] a[aria-current="page"],
+[data-testid="stNavigation"] button[aria-current="page"] {
+    background-color: rgba(212, 137, 106, 0.15) !important;
+    color: #c67651 !important;
+    font-weight: 600 !important;
+}
+
+/* Logo positioning */
+[data-testid="stLogo"] {
+    position: absolute !important;
+    left: 2rem !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    z-index: 1001 !important;
+}
+
+/* Hero content styling */
+.hero-title {
+    font-size: 4rem;
+    font-weight: 900;
+    line-height: 1.1;
+    margin-bottom: 2rem;
+    text-align: center;
+    color: #374151;
+}
+
+.hero-subtitle {
+    font-size: 1.8rem;
+    font-weight: 400;
+    margin-bottom: 3rem;
+    text-align: center;
+    color: #4a5568;
+    line-height: 1.4;
+    
+    /* Glass morphism effect */
+    background: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 16px;
+    padding: 1.5rem 2.5rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    
+    /* Subtle animation */
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    
+    /* Max width for better layout */
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.hero-subtitle:hover {
+    background: rgba(255, 255, 255, 0.35);
+    border: 1px solid rgba(212, 137, 106, 0.2);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+}
+
+/* Add a subtle shine effect */
+.hero-subtitle::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.6s ease;
+}
+
+.hero-subtitle:hover::before {
+    left: 100%;
+}
+
+.hero-description {
+    font-size: 1.3rem;
+    line-height: 1.6;
+    margin-bottom: 3rem;
+    text-align: center;
+    color: #2d3748;
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
+    font-family: var(--body-text-font) !important;
+}
+
+.arsenal-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    text-align: center;
+    color: #374151;
+    margin-bottom: 1rem;
+    font-family: var(--header-font) !important;
+}
+
+.arsenal-subtitle {
+    font-size: 1.4rem;
+    text-align: center;
+    color: #4a5568;
+    margin-bottom: 3rem;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.4;
+    font-family: var(--body-text-font) !important;
+}
+
+.cta-section {
+    background: linear-gradient(135deg, #d4896a 0%, #c67651 50%, #b8683e 100%);
+    color: white;
+    text-align: center;
+    margin: 4rem 0;
+    padding: 3rem;
+    border-radius: 20px;
+    box-shadow: 0 8px 25px rgba(212, 137, 106, 0.3);
+}
+
+.cta-title {
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+    color: white !important;
+}
+
+.cta-subtitle {
+    font-size: 1.2rem;
+    color: rgba(255, 255, 255, 0.95);
+    margin-bottom: 2rem;
+    font-family: var(--body-text-font) !important;
+}
+
+/* Enhanced button styling with coral/orange color scheme */
+.stButton > button {
+    background: linear-gradient(135deg, #d4896a 0%, #c67651 100%) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 12px !important;
+    padding: 1rem 2rem !important;
+    font-weight: 600 !important;
+    font-size: 1rem !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 6px 20px rgba(212, 137, 106, 0.4) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+}
+
+.stButton > button:hover {
+    background: linear-gradient(135deg, #c67651 0%, #b8683e 100%) !important;
+    transform: translateY(-3px) !important;
+    box-shadow: 0 10px 30px rgba(212, 137, 106, 0.6) !important;
+}
+
+/* Enhanced card styling with fixed height */
+.stContainer > div[data-testid="container"] {
+    background: white;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+}
+
+.stContainer > div[data-testid="container"]:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+}
+
+/* Ensure card content fills the container */
+.stContainer > div[data-testid="container"] > div {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+/* Custom styling for pillar description boxes */
+.pillar-description {
+    background: linear-gradient(135deg, #f4e4d9 0%, #f0d5c4 50%, #ecdbc9 100%);
+    color: #5a4037;
+    padding: 1.5rem;
+    border-radius: 12px;
+    margin: 1rem 0;
+    box-shadow: 0 4px 15px rgba(212, 137, 106, 0.2);
+    font-size: 1rem;
+    line-height: 1.5;
+    border: 1px solid #e8c7b3;
+    font-family: var(--main-text-font) !important;
+    font-weight: 400;
+}
+
+/* Simple glass morphism effect for About section containers */
+div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlock"] [data-testid="stContainer"] {
+    background: rgba(255, 255, 255, 0.25) !important;
+    backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1) !important;
+    transition: all 0.3s ease !important;
+    position: relative !important;
+    overflow: hidden !important;
+}
+
+div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlock"] [data-testid="stContainer"]:hover {
+    background: rgba(255, 255, 255, 0.35) !important;
+    border: 1px solid rgba(212, 137, 106, 0.2) !important;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15) !important;
+    transform: translateY(-4px) !important;
+}
+
+/* Shine effect for glass containers */
+div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlock"] [data-testid="stContainer"]::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.6s ease;
+    z-index: 1;
+}
+
+div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlock"] [data-testid="stContainer"]:hover::before {
+    left: 100%;
+}
+
+/* Ensure content stays above the shine effect */
+div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlock"] [data-testid="stContainer"] > div {
+    position: relative;
+    z-index: 2;
+}
+
+/* Override: Keep pillar overview cards with original white styling */
+.stApp .element-container:has(.pillar-description) div[data-testid="stContainer"],
+.stApp div:has(.pillar-description) [data-testid="stContainer"] {
+    background: white !important;
+    backdrop-filter: none !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 12px !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+.stApp .element-container:has(.pillar-description) div[data-testid="stContainer"]:hover,
+.stApp div:has(.pillar-description) [data-testid="stContainer"]:hover {
+    background: white !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Responsive navigation */
+@media (max-width: 768px) {
+    [data-testid="stNavigation"] nav,
+    [data-testid="stNavigation"] div {
+        gap: 1rem !important;
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+        padding: 0 1rem !important;
+    }
+    
+    [data-testid="stNavigation"] a,
+    [data-testid="stNavigation"] button {
+        font-size: 0.9rem !important;
+        padding: 0.4rem 0.8rem !important;
+    }
+    
+    [data-testid="stLogo"] {
+        position: relative !important;
+        left: auto !important;
+        top: auto !important;
+        transform: none !important;
+        display: block !important;
+        text-align: center !important;
+        margin-bottom: 1rem !important;
+    }
+    
+    /* Stack navigation items vertically on very small screens */
+    [data-testid="stNavigation"] {
+        padding: 0 0.5rem !important;
+    }
+}
+
+@media (max-width: 480px) {
+    [data-testid="stNavigation"] nav,
+    [data-testid="stNavigation"] div {
+        flex-direction: column !important;
+        gap: 0.5rem !important;
+    }
+    
+    [data-testid="stNavigation"] a,
+    [data-testid="stNavigation"] button {
+        width: 100% !important;
+        text-align: center !important;
+        padding: 0.6rem 1rem !important;
+    }
+} 

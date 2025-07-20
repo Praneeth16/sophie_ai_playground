@@ -1,0 +1,35 @@
+[theme]
+# Enhanced enterprise color scheme
+primaryColor = "#ff6b35"  # Claude's signature orange
+backgroundColor = "#fafbfc"  # Subtle off-white background
+secondaryBackgroundColor = "#ffffff"  # Pure white for cards/containers
+textColor = "#1a202c"  # Rich dark text
+
+# Enhanced typography
+baseFontWeight = "400"
+codeFontWeight = "500"
+
+# Professional heading hierarchy
+headingFontWeights = ["700", "600", "500"]
+headingFontSizes = ["2.5rem", "2rem", "1.5rem"]
+
+# Sophisticated color palette
+chartCategoricalColors = ["#ff6b35", "#10b981", "#3b82f6", "#8b5cf6", "#f59e0b", "#ef4444", "#06b6d4", "#84cc16"]
+chartSequentialColors = ["#fff7ed", "#fed7aa", "#fb923c", "#ea580c", "#c2410c"]
+
+# Enhanced DataFrame styling
+dataframeHeaderBackgroundColor = "#f8fafc"
+
+# Clean link styling
+linkUnderline = false
+
+[server]
+# Enhanced server configuration
+showEmailPrompt = false
+enableCORS = false
+enableXsrfProtection = true
+
+[global]
+# Performance optimizations
+developmentMode = false
+showWarningOnDirectExecution = false 
