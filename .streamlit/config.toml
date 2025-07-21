@@ -1,5 +1,5 @@
-[theme]
 # Enhanced enterprise color scheme
+[theme]
 base = "light"
 primaryColor = "#ff6b35"  # Claude's signature orange
 backgroundColor = "#fafbfc"  # Subtle off-white background
