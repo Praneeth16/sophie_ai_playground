@@ -1,10 +1,11 @@
 [theme]
 # Enhanced enterprise color scheme
+base = "light"
 primaryColor = "#ff6b35"  # Claude's signature orange
 backgroundColor = "#fafbfc"  # Subtle off-white background
 secondaryBackgroundColor = "#ffffff"  # Pure white for cards/containers
 textColor = "#1a202c"  # Rich dark text
-base = "light"
+
 
 # Enhanced typography
 baseFontWeight = "400"
