@@ -134,8 +134,8 @@ def setup_navigation():
         "Sales": [
             st.Page(sales_acquisition_page, title="Overview"),
             st.Page("pillar/sales_acquisition/smart_document_intelligence/use_case.py", title="Smart Document Intelligence", url_path="smart_document_intelligence"),
-            st.Page("pillar/sales_acquisition/personality_driven_presentations/use_case.py", title="Personality-Driven Presentations", url_path="personality_driven_presentations"),
-            st.Page("pillar/sales_acquisition/industry_intelligence_dashboard/use_case.py", title="Industry Intelligence Dashboard", url_path="industry_intelligence_dashboard"),
+            st.Page("pillar/sales_acquisition/personality_driven_presentations/use_case.py", title="Personality Driven Sales Pitch", url_path="personality_driven_presentations"),
+            st.Page("pillar/sales_acquisition/industry_intelligence_dashboard/use_case.py", title="Industry Intelligence News", url_path="industry_intelligence_dashboard"),
             st.Page("pillar/sales_acquisition/decision_maker_discovery/use_case.py", title="Decision Maker Discovery", url_path="decision_maker_discovery"),
             st.Page("pillar/sales_acquisition/crm_optimization/use_case.py", title="CRM Data Optimization", url_path="crm_optimization"),
             st.Page("pillar/sales_acquisition/market_intelligence/use_case.py", title="Market Intelligence Reports", url_path="market_intelligence")
@@ -168,8 +168,8 @@ def setup_navigation():
         ],
         "Technology Transformation": [
             st.Page(technology_transformation_page, title="Overview"),
-            st.Page("pillar/technology_transformation/tool_development/use_case.py", title="Custom Tool Development", url_path="tool_development"),
-            st.Page("pillar/technology_transformation/prompt_engineering/use_case.py", title="AI Prompt Engineering", url_path="prompt_engineering")
+            st.Page("pillar/technology_transformation/tool_development/use_case.py", title="InHouse Copilot", url_path="tool_development"),
+            st.Page("pillar/technology_transformation/prompt_engineering/use_case.py", title="Prompt Perfect", url_path="prompt_engineering")
         ],
         "Marketing": [
             st.Page(employer_branding_page, title="Overview"),
@@ -289,7 +289,7 @@ def render_about():
             <ul style="list-style: none; padding: 0; text-align: center; font-size: 0.9rem; line-height: 1.4;">
                 <li style="margin-bottom: 0.7rem;">Pratyush Mishra</li>
                 <li style="margin-bottom: 0.7rem;">Vignesh Manjula</li>
-                <li style="margin-bottom: 0.7rem;">...</li>
+                <li style="margin-bottom: 0.7rem;">Harsh Saxena</li>
             </ul>
         </div>
         ''', unsafe_allow_html=True)

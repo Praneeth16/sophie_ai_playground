@@ -8,11 +8,11 @@ textColor = "#1a202c"  # Rich dark text
 
 
 # Enhanced typography
-baseFontWeight = "400"
-codeFontWeight = "500"
+baseFontWeight = 400
+codeFontWeight = 500
 
 # Professional heading hierarchy
-headingFontWeights = ["700", "600", "500"]
+headingFontWeights = [700, 600, 500]
 headingFontSizes = ["2.5rem", "2rem", "1.5rem"]
 
 # Sophisticated color palette

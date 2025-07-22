@@ -1,1 +1,12 @@
-streamlit>=1.47.0 
+streamlit>=1.47.0
+openai
+duckduckgo-search
+python-dotenv
+pandas
+requests
+beautifulsoup4
+pypdf
+lxml
+plotly
+llama-cloud-services
+tavily-python

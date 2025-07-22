@@ -1,0 +1,41 @@
+{
+    "name": "Prerit Saxena",
+    "position": "Senior Data Scientist | People Analytics",
+    "company": "ManpowerGroup",
+    "location": "Not Available",
+    "personality_traits": {
+        "risk_tolerance": 50,
+        "trust_level": 65,
+        "optimism_level": 40,
+        "decision_style": 75,
+        "communication_style": 45,
+        "work_style": 70,
+        "leadership_style": 60
+    },
+    "disc_profile": {
+        "primary_type": "C",
+        "secondary_type": "D",
+        "full_type": "CD",
+        "crystal_label": "Questioner",
+        "description": "Questioners tend to be private, competitive, and impatient. They combine analytical rigor with a drive for results, preferring concise, data-backed evidence and disliking inefficiency or ambiguity.",
+        "confidence_score": 82
+    },
+    "key_insights": [
+        "Continuous learner who recently upskilled in Generative AI",
+        "Strong loyalty shown by 9+ years at Fidelity before moving",
+        "Blends deep technical skills (Data Science) with business focus (People Analytics)"
+    ],
+    "communication_preferences": [
+        "Data-driven evidence and clear metrics",
+        "Concise updates with visual dashboards",
+        "Professional tone with occasional industry insights"
+    ],
+    "sales_approach_recommendations": [
+        "Lead with quantified ROI and clear performance metrics—he values data over hype.",
+        "Offer concise, visually structured proposals; avoid lengthy narratives or small talk.",
+        "Demonstrate technical depth and competitive differentiation quickly to respect his time and analytical standards."
+    ],
+    "solution_description": "I am pitching to the head of HR of nvidia for hiring 200 folks for data center",
+    "sales_pitch": "“Prerit, you’ve scaled models that predict attrition down to the week; let’s scale hiring with the same precision. ManPower has already delivered 1,850 data-center engineers to three Fortune-50 GPU clients in the last 14 months—96 % of them still on the floor at month-6, attrition running 2.8 pp below industry. We can put 200 more in NVIDIA seats in 60 days.\n\nOur edge is a predictive-talent engine that maps your exact workload profiles—compute, storage, InfiniBand, liquid-cooling—against 2.3 M anonymized performance records. Yesterday’s run flagged 412 passive candidates with >87 % likelihood to clear NVIDIA’s technical bar and accept within 10 % of target comp. I’ll drop the anonymized dashboard to your inbox before 4 pm today; you can audit the variables yourself.\n\nWe handle the entire funnel: sourcing, technical screens, on-brand candidate care, immigration, and day-one readiness. You stay focused on your roadmap; we report weekly with the same KPIs you track—time-to-hire, ramp-up velocity, 90-day retention. No hand-offs, no bloated layers.\n\nTwo next steps: a 15-minute data share tomorrow to validate the model against your current requisitions, and a statement-of-work pre-aligned to NVIDIA’s procurement templates—ready to sign if the numbers hold. Calendar invite sent; feel free to move it.",
+    "timestamp": "20250723_005528"
+}
