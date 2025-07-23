@@ -1,10 +1,17 @@
 # Enhanced enterprise color scheme
 [theme]
 base = "light"
-primaryColor = "#ff6b35"  # Claude's signature orange
-backgroundColor = "#fafbfc"  # Subtle off-white background
-secondaryBackgroundColor = "#ffffff"  # Pure white for cards/containers
-textColor = "#1a202c"  # Rich dark text
+primaryColor = "#D97757"  # Claude's signature orange
+backgroundColor = "#F0EEE6"  # Subtle off-white background
+secondaryBackgroundColor = "#E3DACC"  # Pure white for cards/containers
+textColor = "#3D3A2A"  # Rich dark text
+linkColor = "#3d3a2a"
+borderColor = "#d3d2ca"
+showWidgetBorder = true
+baseRadius = "0.6rem"
+#font = "Styrene B"
+codeFont = "Fira Code"
+codeBackgroundColor = "#ecebe4"
 
 
 # Enhanced typography
@@ -24,6 +31,10 @@ dataframeHeaderBackgroundColor = "#f8fafc"
 
 # Clean link styling
 linkUnderline = false
+
+[theme.sidebar]
+backgroundColor = "#e8e7dd"
+secondaryBackgroundColor = "#ecebe3"
 
 [server]
 # Enhanced server configuration

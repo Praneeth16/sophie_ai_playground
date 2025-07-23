@@ -169,7 +169,8 @@ def setup_navigation():
         "Technology Transformation": [
             st.Page(technology_transformation_page, title="Overview"),
             st.Page("pillar/technology_transformation/tool_development/use_case.py", title="InHouse Copilot", url_path="tool_development"),
-            st.Page("pillar/technology_transformation/prompt_engineering/use_case.py", title="Prompt Perfect", url_path="prompt_engineering")
+            st.Page("pillar/technology_transformation/prompt_engineering/use_case.py", title="Prompt Perfect", url_path="prompt_engineering"),
+            st.Page("pillar/technology_transformation/ai_automation/use_case.py", title="AI Automation Tool", url_path="ai_automation")
         ],
         "Marketing": [
             st.Page(employer_branding_page, title="Overview"),

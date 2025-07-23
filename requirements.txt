@@ -10,3 +10,8 @@ lxml
 plotly
 llama-cloud-services
 tavily-python
+langchain-openai
+langgraph
+langchain-core
+streamlit-agraph
+typing-extensions

@@ -3,7 +3,8 @@ import streamlit as st
 # Technology Transformation use cases data
 use_cases_data = [
     {"name": "Custom Recruitment Tool Development", "description": "AI-powered code generation for custom ATS integrations, reporting tools, and workflow automation"},
-    {"name": "AI Prompt Engineering Suite", "description": "Intelligent prompt creation and optimization for recruitment AI tools and candidate assessment systems"}
+    {"name": "AI Prompt Engineering Suite", "description": "Intelligent prompt creation and optimization for recruitment AI tools and candidate assessment systems"},
+    {"name": "AI Automation Tool", "description": "Automate your workflows using AI"}
 ]
 
 def render_pillar_page():
