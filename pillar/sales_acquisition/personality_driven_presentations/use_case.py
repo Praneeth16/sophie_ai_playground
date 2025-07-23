@@ -452,11 +452,6 @@ def save_session_data(analysis: Dict[str, Any], solution: str, pitch: str):
 
 # Streamlit UI
 def main():
-    st.set_page_config(
-        page_title="Personality-Driven Sales Pitch Generator",
-        page_icon="🧠",
-        layout="wide"
-    )
     
     # Page header with consistent styling
     st.markdown('<div class="arsenal-title">Personality-Driven Sales Pitch Generator</div>', unsafe_allow_html=True)
