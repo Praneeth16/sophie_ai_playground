@@ -166,7 +166,7 @@ def analyze_linkedin_profile(profile_text: str) -> Dict[str, Any]:
     
     try:
         response1 = client.chat.completions.create(
-            model='openai/gpt-4.1',
+            model=MODEL_NAME,
             messages=[{"role": "user", "content": prompt1}],
             temperature=0.3,
             response_format={"type": "json_object"}
