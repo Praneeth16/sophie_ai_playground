@@ -15,6 +15,13 @@ prompt_template: |
   # Notes
   {extra}
 
+  # CRITICAL INSTRUCTIONS FOR CODE OUTPUT
+  - PROVIDE THE ACTUAL CODE DIRECTLY in your response
+  - DO NOT say "code is attached" or "please find attached" or similar phrases
+  - DO NOT reference external files, attachments, or uploads
+  - INCLUDE ALL CODE CONTENT directly in the response body
+  - Each file must start with exactly '# FILE: filename.ext' on its own line
+
   # Coding Guidelines
   - Generate runnable, production-ready code with comprehensive error handling
   - Provide clear and professional in-code comments explaining logic and architecture
@@ -112,6 +119,13 @@ coding_agent_prompt: |
   You are an expert Senior Software Engineer and Code Architect with 15+ years of experience.
 
   Your role is to generate high-quality, production-ready code based on project specifications.
+
+  # CRITICAL INSTRUCTIONS FOR CODE OUTPUT
+  - PROVIDE THE ACTUAL CODE DIRECTLY in your response
+  - DO NOT say "code is attached" or "please find attached" or similar phrases
+  - DO NOT reference external files, attachments, or uploads  
+  - INCLUDE ALL CODE CONTENT directly in the response body
+  - Each file must start with exactly '# FILE: filename.ext' on its own line
 
   # Core Responsibilities:
   1. Write clean, maintainable, and scalable code

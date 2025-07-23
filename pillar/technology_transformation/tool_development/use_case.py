@@ -220,93 +220,224 @@ def analyze_query_complexity(query: str, language: str) -> Dict[str, Any]:
             }
         }
 
-def generate_simple_code(query: str, language: str) -> List[Tuple[str, str]]:
-    """Generate code directly for simple requests"""
+def validate_response_content(text: str) -> Dict[str, Any]:
+    """Validate if the response contains actual code or just references to attached files"""
     
-    # Create a minimal prompt for simple requests
-    simple_prompt = f"""
-You are a helpful coding assistant. Generate a simple, focused solution for this request:
+    # Patterns that indicate the model is not providing direct code
+    problematic_patterns = [
+        r"(?i)code\s+is\s+attached",
+        r"(?i)please\s+find\s+the\s+code\s+attached",
+        r"(?i)attached\s+files?",
+        r"(?i)see\s+attached",
+        r"(?i)code\s+attached",
+        r"(?i)files?\s+attached",
+        r"(?i)i\s+have\s+attached",
+        r"(?i)i\'ve\s+attached",
+        r"(?i)uploaded\s+files?",
+        r"(?i)download\s+the\s+files?",
+        r"(?i)check\s+the\s+attached",
+        r"(?i)refer\s+to\s+the\s+attached",
+        r"(?i)the\s+files?\s+are\s+attached"
+    ]
+    
+    # Check if response contains problematic patterns
+    contains_attachment_reference = any(re.search(pattern, text) for pattern in problematic_patterns)
+    
+    # Check if response is too short to contain meaningful code
+    is_too_short = len(text.strip()) < 50
+    
+    # Check if response contains typical code patterns
+    code_patterns = [
+        r"def\s+\w+\(",  # Python functions
+        r"function\s+\w+\(",  # JavaScript functions
+        r"class\s+\w+",  # Class definitions
+        r"import\s+\w+",  # Import statements
+        r"package\s+\w+",  # Go/Java packages
+        r"#include\s*<",  # C/C++ includes
+        r"using\s+\w+",  # C# using statements
+        r"public\s+class",  # Java public classes
+        r"fn\s+\w+\(",  # Rust functions
+        r"<?php",  # PHP opening tag
+        r"require\s*[(\'\"]",  # Ruby/Node requires
+    ]
+    
+    contains_code_patterns = any(re.search(pattern, text) for pattern in code_patterns)
+    
+    # Check for file markers
+    has_file_markers = bool(re.search(r"#\s*FILE\s*:", text, re.IGNORECASE))
+    
+    return {
+        "is_valid": not contains_attachment_reference and not is_too_short and (contains_code_patterns or has_file_markers),
+        "contains_attachment_reference": contains_attachment_reference,
+        "is_too_short": is_too_short,
+        "contains_code_patterns": contains_code_patterns,
+        "has_file_markers": has_file_markers,
+        "content_length": len(text.strip())
+    }
+
+def create_explicit_code_prompt(query: str, language: str, attempt_number: int = 1) -> str:
+    """Create an explicit prompt that forces direct code output"""
+    
+    base_prompt = f"""
+You are a coding assistant. You MUST provide the actual code directly in your response.
 
 Request: {query}
 Language: {language}
 Version: {get_language_version(language)}
 
-Instructions:
-- Create ONLY the essential files needed (typically 1-2 files max)
-- For simple scripts, create just the main file (e.g., hello.py, main.js, app.go)
-- For web apps, create main file + basic HTML if needed
-- NO complex folder structures, NO deployment files, NO .gitignore, NO README unless explicitly requested
-- Focus on the core functionality only
-- Output format: Start each file with '# FILE: filename.ext'
-- Use proper filename conventions: lowercase with underscores
-- Make it runnable and focused
+CRITICAL INSTRUCTIONS:
+- DO NOT say "code is attached" or "please find attached" or similar phrases
+- DO NOT reference external files or attachments  
+- PROVIDE THE ACTUAL CODE DIRECTLY in your response
+- Start each file with exactly '# FILE: filename.ext' on its own line
+- Include the complete, runnable code after each file marker
+- Make it immediately usable without any additional steps
 
-IMPORTANT: Each file must start with exactly '# FILE: filename.ext' on its own line.
+Example format:
+# FILE: main.{get_file_extension(language)}
+[ACTUAL CODE CONTENT HERE]
 
-Generate minimal, working code that directly addresses the request.
+# FILE: requirements.txt  
+[ACTUAL REQUIREMENTS HERE]
+
+Generate the working code now:
 """
     
-    try:
-        add_debug_info(f"Generating simple code with model: mistralai/devstral-medium")
-        response = client.chat.completions.create(
-            model="mistralai/devstral-medium",
-            messages=[{"role": "user", "content": simple_prompt}],
-            temperature=0.3
-        )
+    if attempt_number > 1:
+        base_prompt += f"""
+
+RETRY ATTEMPT #{attempt_number}:
+The previous response was invalid. You MUST include the actual code content directly.
+DO NOT mention attachments, files being attached, or external references.
+PROVIDE COMPLETE, WORKING CODE in the response body.
+"""
+    
+    return base_prompt
+
+def get_file_extension(language: str) -> str:
+    """Get the appropriate file extension for a language"""
+    ext_map = {
+        "Python": "py",
+        "JavaScript": "js", 
+        "TypeScript": "ts",
+        "Java": "java",
+        "Go": "go",
+        "Rust": "rs",
+        "C#": "cs",
+        "PHP": "php",
+        "Ruby": "rb",
+        "C": "c",
+        "C++": "cpp"
+    }
+    return ext_map.get(language, "txt")
+
+def generate_code_with_retry(query: str, language: str, is_complex: bool = False, max_retries: int = 3) -> List[Tuple[str, str]]:
+    """Generate code with retry logic for handling attachment responses"""
+    
+    for attempt in range(1, max_retries + 1):
+        add_debug_info(f"Code generation attempt {attempt}/{max_retries}")
         
-        generated_code = response.choices[0].message.content
-        add_debug_info(f"Generated code length: {len(generated_code)} chars")
-        
-        files = parse_generated_files(generated_code)
-        add_debug_info(f"Parsed {len(files)} files from response")
-        
-        if not files:
-            add_debug_info("No files parsed, showing raw response for debugging")
-            st.error("No files were parsed from the response. Raw response:")
-            st.code(generated_code, language="text")
-        
-        return files
-        
-    except Exception as e:
-        add_debug_info(f"Simple code generation error: {str(e)}")
-        st.error(f"Error generating simple code: {str(e)}")
-        return []
+        try:
+            if is_complex and attempt == 1:
+                # Use the complex prompt for first attempt if it's complex
+                prompt = config["prompt_template"].format(
+                    idea=query,
+                    language=language,
+                    version=get_language_version(language),
+                    extra=f"This is a complex {language} project. PROVIDE ACTUAL CODE DIRECTLY in your response. DO NOT reference attachments."
+                )
+            else:
+                # Use explicit prompt for simple requests or retry attempts
+                prompt = create_explicit_code_prompt(query, language, attempt)
+            
+            add_debug_info(f"Using model: mistralai/devstral-medium for attempt {attempt}")
+            response = client.chat.completions.create(
+                model="mistralai/devstral-medium",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3
+            )
+            
+            generated_code = response.choices[0].message.content
+            add_debug_info(f"Generated response length: {len(generated_code)} chars")
+            
+            # Validate the response
+            validation = validate_response_content(generated_code)
+            add_debug_info(f"Validation result: {validation}")
+            
+            if not validation["is_valid"]:
+                add_debug_info(f"Invalid response detected on attempt {attempt}")
+                
+                if validation["contains_attachment_reference"]:
+                    add_debug_info("Response contains attachment references")
+                    if attempt < max_retries:
+                        st.warning(f"⚠️ Attempt {attempt}: AI mentioned 'attached files' instead of providing code. Retrying with more explicit instructions...")
+                        continue
+                elif validation["is_too_short"]:
+                    add_debug_info("Response is too short")
+                    if attempt < max_retries:
+                        st.warning(f"⚠️ Attempt {attempt}: Response too short ({validation['content_length']} chars). Retrying...")
+                        continue
+                elif not validation["contains_code_patterns"] and not validation["has_file_markers"]:
+                    add_debug_info("Response lacks code patterns")
+                    if attempt < max_retries:
+                        st.warning(f"⚠️ Attempt {attempt}: No recognizable code patterns found. Retrying...")
+                        continue
+            
+            # Try to parse files
+            files = parse_generated_files(generated_code)
+            add_debug_info(f"Parsed {len(files)} files from attempt {attempt}")
+            
+            # Additional validation: check if parsed files contain actual code
+            if files:
+                valid_files = []
+                for filename, content in files:
+                    file_validation = validate_response_content(content)
+                    if file_validation["is_valid"] or len(content.strip()) > 20:  # More lenient for individual files
+                        valid_files.append((filename, content))
+                    else:
+                        add_debug_info(f"File {filename} failed validation: {file_validation}")
+                
+                if valid_files:
+                    add_debug_info(f"Successfully generated {len(valid_files)} valid files")
+                    return valid_files
+                else:
+                    add_debug_info("No valid files after parsing")
+                    if attempt < max_retries:
+                        st.warning(f"Attempt {attempt}: Parsed files but none contain valid code. Retrying...")
+                        continue
+            else:
+                add_debug_info("No files could be parsed")
+                if attempt < max_retries:
+                    st.warning(f"Attempt {attempt}: Could not parse any files from response. Retrying...")
+                    continue
+            
+            # If we reach here and it's the last attempt, show the raw response for debugging
+            if attempt == max_retries:
+                st.error("All attempts failed. Showing raw response for debugging:")
+                with st.expander("Raw AI Response", expanded=True):
+                    st.code(generated_code, language="text")
+                    st.write("**Validation Details:**")
+                    st.json(validation)
+                break
+                
+        except Exception as e:
+            add_debug_info(f"Error in attempt {attempt}: {str(e)}")
+            if attempt < max_retries:
+                st.warning(f"⚠️ Attempt {attempt} failed with error: {str(e)}. Retrying...")
+                continue
+            else:
+                st.error(f"Final attempt failed: {str(e)}")
+                break
+    
+    return []
+
+def generate_simple_code(query: str, language: str) -> List[Tuple[str, str]]:
+    """Generate code directly for simple requests using retry logic"""
+    return generate_code_with_retry(query, language, is_complex=False)
 
 def generate_complex_code(query: str, language: str, breakdown: List[str]) -> List[Tuple[str, str]]:
-    """Generate code using enhanced approach for complex requests"""
-    
-    try:
-        complex_prompt = config["prompt_template"].format(
-            idea=query,
-            language=language,
-            version=get_language_version(language),
-            extra=f"This is a complex {language} project. Follow best practices and create a complete, production-ready structure with proper folder organization, testing, documentation, and configuration files."
-        )
-        
-        add_debug_info(f"Generating complex code with model: mistralai/devstral-medium")
-        response = client.chat.completions.create(
-            model="mistralai/devstral-medium",
-            messages=[{"role": "user", "content": complex_prompt}],
-            temperature=0.3
-        )
-        
-        generated_code = response.choices[0].message.content
-        add_debug_info(f"Generated complex code length: {len(generated_code)} chars")
-        
-        files = parse_generated_files(generated_code)
-        add_debug_info(f"Parsed {len(files)} files from complex response")
-        
-        if not files:
-            add_debug_info("No files parsed from complex response, showing raw response for debugging")
-            st.error("No files were parsed from the complex response. Raw response:")
-            st.code(generated_code, language="text")
-        
-        return files
-        
-    except Exception as e:
-        add_debug_info(f"Complex code generation error: {str(e)}")
-        st.error(f"Error generating complex code: {str(e)}")
-        return []
+    """Generate code using enhanced approach for complex requests with retry logic"""
+    return generate_code_with_retry(query, language, is_complex=True)
 
 def get_language_version(language: str) -> str:
     """Get appropriate version string for the language"""
@@ -330,20 +461,23 @@ def parse_generated_files(text: str) -> List[Tuple[str, str]]:
     
     # Enhanced patterns to catch more variations
     patterns = [
-        # Original patterns
-        re.compile(r"# FILE: (.*?)\n(.*?)(?=(# FILE:|\Z))", re.DOTALL),  
-        re.compile(r"#\s*FILE:\s*(.*?)\n(.*?)(?=(#\s*FILE:|\Z))", re.DOTALL),  
-        re.compile(r"(?:^|\n)# FILE: (.*?)\n(.*?)(?=(?:\n# FILE:|\Z))", re.DOTALL),  
+        # Original patterns with case insensitive matching
+        re.compile(r"#\s*FILE\s*:\s*(.*?)\n(.*?)(?=(#\s*FILE\s*:|\Z))", re.DOTALL | re.IGNORECASE),  
+        re.compile(r"(?:^|\n)#\s*FILE\s*:\s*(.*?)\n(.*?)(?=(?:\n#\s*FILE\s*:|\Z))", re.DOTALL | re.IGNORECASE),  
         
         # Code block variations
-        re.compile(r"```(?:python|javascript|java|go|rust|php|ruby)?\n# FILE: (.*?)\n(.*?)```", re.DOTALL),
-        re.compile(r"```\n# FILE: (.*?)\n(.*?)```", re.DOTALL),
+        re.compile(r"```(?:python|javascript|java|go|rust|php|ruby|typescript|csharp|cpp|c)?\n#\s*FILE\s*:\s*(.*?)\n(.*?)```", re.DOTALL | re.IGNORECASE),
+        re.compile(r"```\n#\s*FILE\s*:\s*(.*?)\n(.*?)```", re.DOTALL | re.IGNORECASE),
         
         # Alternative file markers
-        re.compile(r"## (.*?)\n```(?:python|javascript|java|go|rust|php|ruby)?\n(.*?)```", re.DOTALL),
-        re.compile(r"### (.*?)\n```(?:python|javascript|java|go|rust|php|ruby)?\n(.*?)```", re.DOTALL),
-        re.compile(r"File: (.*?)\n```(?:python|javascript|java|go|rust|php|ruby)?\n(.*?)```", re.DOTALL),
-        re.compile(r"`(.*?)`\n```(?:python|javascript|java|go|rust|php|ruby)?\n(.*?)```", re.DOTALL),
+        re.compile(r"##\s*(.*?)\n```(?:python|javascript|java|go|rust|php|ruby|typescript|csharp|cpp|c)?\n(.*?)```", re.DOTALL),
+        re.compile(r"###\s*(.*?)\n```(?:python|javascript|java|go|rust|php|ruby|typescript|csharp|cpp|c)?\n(.*?)```", re.DOTALL),
+        re.compile(r"File\s*:\s*(.*?)\n```(?:python|javascript|java|go|rust|php|ruby|typescript|csharp|cpp|c)?\n(.*?)```", re.DOTALL | re.IGNORECASE),
+        re.compile(r"`(.*?)`\n```(?:python|javascript|java|go|rust|php|ruby|typescript|csharp|cpp|c)?\n(.*?)```", re.DOTALL),
+        
+        # Filename only patterns (for cases where filename is clearly marked)
+        re.compile(r"(?:^|\n)\*\*([^*]+\.(?:py|js|ts|java|go|rs|cs|php|rb|html|css|json|yaml|yml|txt|md))\*\*\n(.*?)(?=(?:\n\*\*[^*]+\.(?:py|js|ts|java|go|rs|cs|php|rb|html|css|json|yaml|yml|txt|md)\*\*|\Z))", re.DOTALL | re.IGNORECASE),
+        re.compile(r"(?:^|\n)([^:\n]+\.(?:py|js|ts|java|go|rs|cs|php|rb|html|css|json|yaml|yml|txt|md)):\n(.*?)(?=(?:\n[^:\n]+\.(?:py|js|ts|java|go|rs|cs|php|rb|html|css|json|yaml|yml|txt|md):|\Z))", re.DOTALL | re.IGNORECASE),
     ]
     
     all_matches = []
@@ -355,15 +489,18 @@ def parse_generated_files(text: str) -> List[Tuple[str, str]]:
         for match in matches:
             filename = match[0].strip()
             content = match[1].strip()
-            if filename and content:  # Only add if both filename and content exist
+            if filename and content and len(content) > 10:  # Must have meaningful content
                 all_matches.append((filename, content))
     
-    # Remove duplicates (same filename)
+    # Remove duplicates (same filename) and clean filenames
     seen_files = set()
     files = []
     for filename, content in all_matches:
-        clean_filename = filename.strip().replace('`', '').replace('#', '').strip()
-        if clean_filename not in seen_files and clean_filename and content:
+        clean_filename = filename.strip().replace('`', '').replace('#', '').replace('*', '').strip()
+        # Remove any leading/trailing quotes or brackets
+        clean_filename = re.sub(r'^["\'\[\(]+|["\'\]\)]+$', '', clean_filename)
+        
+        if clean_filename not in seen_files and clean_filename and content and not is_attachment_reference(content):
             files.append((clean_filename, content))
             seen_files.add(clean_filename)
     
@@ -372,20 +509,35 @@ def parse_generated_files(text: str) -> List[Tuple[str, str]]:
         add_debug_info(f"  - {filename}")
     
     # If no files parsed but we have content, try a more aggressive approach
-    if not files and len(text.strip()) > 100:
+    if not files and len(text.strip()) > 100 and not is_attachment_reference(text):
         add_debug_info("No files parsed with patterns, trying fallback approach")
-        # Create a single file with the entire content
-        language_ext = {
-            "Python": "py", "JavaScript": "js", "TypeScript": "ts",
-            "Java": "java", "Go": "go", "Rust": "rs", "C#": "cs",
-            "PHP": "php", "Ruby": "rb"
-        }
-        ext = language_ext.get(st.session_state.language_choice, "txt")
-        fallback_filename = f"main.{ext}"
-        files.append((fallback_filename, text.strip()))
-        add_debug_info(f"Created fallback file: {fallback_filename}")
+        # Check if the text looks like actual code
+        validation = validate_response_content(text)
+        if validation["contains_code_patterns"] or validation["has_file_markers"]:
+            language_ext = {
+                "Python": "py", "JavaScript": "js", "TypeScript": "ts",
+                "Java": "java", "Go": "go", "Rust": "rs", "C#": "cs",
+                "PHP": "php", "Ruby": "rb", "C": "c", "C++": "cpp"
+            }
+            ext = language_ext.get(st.session_state.language_choice, "txt")
+            fallback_filename = f"main.{ext}"
+            files.append((fallback_filename, text.strip()))
+            add_debug_info(f"Created fallback file: {fallback_filename}")
     
     return files
+
+def is_attachment_reference(text: str) -> bool:
+    """Check if text contains references to attachments instead of actual code"""
+    attachment_patterns = [
+        r"(?i)code\s+is\s+attached",
+        r"(?i)please\s+find\s+attached",
+        r"(?i)attached\s+files?",
+        r"(?i)see\s+attached",
+        r"(?i)download\s+the\s+files?",
+        r"(?i)i\s+have\s+attached",
+        r"(?i)files?\s+are\s+attached"
+    ]
+    return any(re.search(pattern, text) for pattern in attachment_patterns)
 
 def render_sidebar_directory_structure(files: List[Tuple[str, str]]):
     """Render directory structure in sidebar with clean expanders and buttons"""
@@ -576,6 +728,27 @@ def render_chat_interface():
     """Render chat interface in main area"""
     
     st.markdown('<div style="font-size: 1.5rem; font-weight: 700; color: #374151; margin-bottom: 1rem; font-family: var(--header-font);">AI Assistant</div>', unsafe_allow_html=True)
+    
+    # Info about attachment handling
+    with st.expander("ℹ️ How We Handle AI 'Attachment' Responses", expanded=False):
+        st.markdown("""
+        **Automatic Retry System for Better Code Generation:**
+        
+        Sometimes AI models respond with phrases like "code is attached" instead of providing actual code. 
+        Our system automatically handles this by:
+        
+        - 🔍 **Detecting** when responses mention "attachments" instead of code
+        - ⚡ **Retrying** with more explicit instructions (up to 3 attempts)
+        - ✅ **Validating** that responses contain actual code patterns
+        - 🔧 **Providing** clear feedback during the retry process
+        
+        **What You'll See:**
+        - ⚠️ Warning messages when retries are happening
+        - 📊 Debug information (enable in sidebar) showing validation details
+        - ❌ Raw response display if all attempts fail for debugging
+        
+        This ensures you always get working code files instead of references to non-existent attachments!
+        """)
     
     # Display chat history
     if st.session_state.chat_history:
