@@ -17,7 +17,7 @@ from llama_cloud_services import LlamaParse
 # OpenRouter API Configuration
 OPENROUTER_API_KEY = st.secrets.get("OPENROUTER_API_KEY", "your-openrouter-api-key")
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
-MODEL_NAME = "moonshotai/kimi-k2"
+MODEL_NAME = "google/gemini-2.5-pro"
 
 # LlamaCloud Configuration
 LLAMACLOUD_API_KEY = st.secrets.get("LLAMACLOUD_API_KEY", "your-llamacloud-api-key")
@@ -165,7 +165,7 @@ def analyze_linkedin_profile(profile_text: str) -> Dict[str, Any]:
     }}
 
     LinkedIn Profile:
-    {clean_profile_text[:4000]}
+    {clean_profile_text[:10_000]}
 
     Return only the JSON object, no additional text or explanation.
     """
@@ -174,7 +174,7 @@ def analyze_linkedin_profile(profile_text: str) -> Dict[str, Any]:
         response1 = client.chat.completions.create(
             model=MODEL_NAME,
             messages=[{"role": "user", "content": prompt1}],
-            temperature=0.4,
+            temperature=0.7,
             response_format={"type": "json_object"}
         )
         
