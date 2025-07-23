@@ -145,10 +145,10 @@ def analyze_linkedin_profile(profile_text: str) -> Dict[str, Any]:
     
     # First LLM call: Extract basic information and personality traits
     prompt1 = f"""
-    Analyze the following LinkedIn profile and extract key information. Return ONLY a valid JSON object with the following structure:
+    Analyze the following LinkedIn profile pdf and extract key information. Return ONLY a valid JSON object with the following structure:
     {{
-        "name": "Person's name mentioned at the beginning of the profile",
-        "position": "Current position/title mentioned in the profile", 
+        "name": "Extract the Linkedin Profile Person's name mentioned at the beginning of the profile",
+        "position": "Current position or title mentioned in the profile", 
         "company": "Current company mentioned in the profile",
         "location": "Current location mentioned in the profile",
         "personality_traits": {{
@@ -172,9 +172,9 @@ def analyze_linkedin_profile(profile_text: str) -> Dict[str, Any]:
     
     try:
         response1 = client.chat.completions.create(
-            model=MODEL_NAME,
+            model='openai/gpt-4.1',
             messages=[{"role": "user", "content": prompt1}],
-            temperature=0.7,
+            temperature=0.3,
             response_format={"type": "json_object"}
         )
         
