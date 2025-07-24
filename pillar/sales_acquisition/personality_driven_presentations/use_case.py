@@ -97,12 +97,15 @@ def extract_text_from_pdf(uploaded_file):
         result = llama_cloud.parse(tmp_file_path)
         
         # Get text documents without page splitting
-        text_documents = result.get_markdown_documents(split_by_page=False)
+        text_documents = result.get_markdown_documents(split_by_page=True)
+
+        text = '\n---\n'.join([text_document.text for text_document in text_documents])
+
         
         # Clean up temporary file
         os.unlink(tmp_file_path)
         
-        return text_documents.strip()
+        return text.strip()
         
     except Exception as e:
         st.error(f"Error extracting text from PDF using LlamaParse: {e}")

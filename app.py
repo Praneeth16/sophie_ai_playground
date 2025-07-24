@@ -150,8 +150,8 @@ def setup_navigation():
         "Talent Intimacy": [
             st.Page(candidate_experience_page, title="Overview"),
             st.Page("pillar/candidate_experience/job_matching/use_case.py", title="Job Matching Engine", url_path="job_matching"),
-            st.Page("pillar/candidate_experience/career_advisor/use_case.py", title="Career Development Advisor", url_path="career_advisor"),
-            st.Page("pillar/candidate_experience/interview_coach/use_case.py", title="Interview Preparation Coach", url_path="interview_coach"),
+            #st.Page("pillar/candidate_experience/career_advisor/use_case.py", title="Career Development Advisor", url_path="career_advisor"),
+            st.Page("pillar/candidate_experience/interview_coach/use_case.py", title="Career Dev & Interview Preparation Coach", url_path="interview_coach"),
             st.Page("pillar/candidate_experience/learning_recommender/use_case.py", title="Learning Recommender", url_path="learning_recommender"),
             st.Page("pillar/candidate_experience/job_compatibility/use_case.py", title="Job Compatibility Assessment", url_path="job_compatibility")
         ],
@@ -174,8 +174,8 @@ def setup_navigation():
         ],
         "Marketing": [
             st.Page(employer_branding_page, title="Overview"),
-            st.Page("pillar/employer_branding/content_creation/use_case.py", title="Content Creation Engine", url_path="content_creation"),
-            st.Page("pillar/employer_branding/seo_job_posting/use_case.py", title="SEO Job Posting Generator", url_path="seo_job_posting")
+            st.Page("pillar/employer_branding/content_creation/use_case.py", title="Content Guardrails", url_path="content_creation"),
+            st.Page("pillar/employer_branding/seo_job_posting/use_case.py", title="SEO Optimized Content", url_path="seo_job_posting")
         ]
     }
     
