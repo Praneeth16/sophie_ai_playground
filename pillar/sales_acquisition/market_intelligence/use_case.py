@@ -4,6 +4,8 @@ import json
 import os
 import time
 import uuid
+import re
+import urllib.parse
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -20,6 +22,64 @@ load_dotenv()
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# ============= Content Sanitization Utilities =============
+def sanitize_report_content(content: str) -> str:
+    """Sanitize report content to prevent rendering issues"""
+    if not content:
+        return content
+    
+    # Remove or replace problematic patterns that cause red text
+    content = re.sub(r'\b(ERROR|Error|error):\s*', '', content)
+    content = re.sub(r'\*\*ERROR\*\*:?\s*', '', content)
+    content = re.sub(r'❌\s*(ERROR|Error|error):?\s*', '', content)
+    
+    # Clean up excessive formatting
+    content = re.sub(r'\*{3,}', '**', content)  # Replace triple+ asterisks with double
+    content = re.sub(r'_{3,}', '__', content)   # Replace triple+ underscores with double
+    
+    # Remove any HTML-like error tags
+    content = re.sub(r'<error[^>]*>.*?</error>', '', content, flags=re.IGNORECASE | re.DOTALL)
+    
+    # Clean up multiple consecutive newlines
+    content = re.sub(r'\n{4,}', '\n\n\n', content)
+    
+    return content.strip()
+
+def validate_and_encode_url(url: str) -> Optional[str]:
+    """Validate and properly encode URLs for markdown links"""
+    if not url or not isinstance(url, str):
+        return None
+    
+    # Remove any whitespace
+    url = url.strip()
+    
+    # Check if it's a valid URL structure
+    if not (url.startswith('http://') or url.startswith('https://')):
+        return None
+    
+    try:
+        # Parse and reconstruct URL to ensure proper encoding
+        parsed = urllib.parse.urlparse(url)
+        if not parsed.netloc:  # Invalid URL
+            return None
+        
+        # Reconstruct with proper encoding
+        encoded_url = urllib.parse.urlunparse(parsed)
+        return encoded_url
+    except Exception:
+        return None
+
+def clean_source_title(title: str) -> str:
+    """Clean source titles for proper display"""
+    if not title or not isinstance(title, str):
+        return "Untitled Source"
+    
+    # Remove any problematic characters that might break markdown
+    title = re.sub(r'[\[\]()]', '', title)
+    title = title.strip()
+    
+    return title if title else "Untitled Source"
 
 # ============= Configuration & Models =============
 @dataclass
@@ -82,6 +142,164 @@ class ResearchState:
     error: Optional[str] = None
     start_time: Optional[float] = None
     end_time: Optional[float] = None
+
+# ============= Cached API Functions =============
+@st.cache_data(ttl=3600, show_spinner=False)  # Cache for 1 hour - briefing doesn't change much
+def cached_generate_brief(topic: str, openrouter_key: str, model_name: str) -> dict:
+    """Cached research brief generation"""
+    client = OpenRouterClient(openrouter_key, model_name)
+    prompt = f"""Create a focused research brief for: {topic}
+
+Return a JSON object with these fields:
+- objective: Clear research goal (string)
+- key_questions: 3-4 specific questions (array of strings)
+- scope: Research boundaries (string)  
+- expected_outcome: Expected deliverable (string)
+
+Topic: {topic}"""
+    
+    system = "You are a market research strategist. Return only valid JSON with simple strings and arrays."
+    result = client.complete(prompt, system, temperature=0.3, response_format=ResearchBrief)
+    return result.model_dump()
+
+@st.cache_data(ttl=1800, show_spinner=False)  # Cache for 30 minutes - research plans can be reused
+def cached_create_research_plan(brief_dict: dict, max_sections: int, openrouter_key: str, model_name: str) -> dict:
+    """Cached research plan creation"""
+    brief = ResearchBrief.model_validate(brief_dict)
+    client = OpenRouterClient(openrouter_key, model_name)
+    
+    prompt = f"""Create a research plan with {max_sections} sections.
+
+Objective: {brief.objective}
+Questions: {json.dumps(brief.key_questions)}
+
+Return JSON with:
+{{
+  "sections": [
+    {{
+      "title": "Section name",
+      "description": "What it covers", 
+      "search_queries": ["Query 1", "Query 2"]
+    }}
+  ]
+}}"""
+    
+    system = "You are a business intelligence researcher. Return only valid JSON."
+    result = client.complete(prompt, system, temperature=0.5, response_format=ResearchPlan)
+    return result.model_dump()
+
+@st.cache_data(ttl=900, show_spinner=False)  # Cache for 15 minutes - search results change more frequently
+def cached_tavily_search(query: str, search_depth: str, max_results: int, tavily_key: str) -> List[Dict]:
+    """Cached Tavily search results"""
+    client = TavilySearchClient(tavily_key)
+    return client.search(query, search_depth, max_results)
+
+@st.cache_data(ttl=600, show_spinner=False)  # Cache for 10 minutes - content synthesis is expensive
+def cached_synthesize_section(section_dict: dict, brief_dict: dict, combined_content: str, openrouter_key: str, model_name: str) -> str:
+    """Cached section content synthesis"""
+    section = ResearchSection.model_validate(section_dict)
+    brief = ResearchBrief.model_validate(brief_dict)
+    client = OpenRouterClient(openrouter_key, model_name)
+    
+    prompt = f"""Write a comprehensive section for a market intelligence report.
+
+Section: {section.title}
+Description: {section.description}
+Research Objective: {brief.objective}
+
+Based on these search results:
+{combined_content}
+
+Write 2-3 detailed paragraphs with specific insights and business implications.
+
+IMPORTANT: 
+- Use clear, professional language
+- Avoid using words like "ERROR", "error", or "Error" in your response
+- Focus on insights and business implications
+- Use standard markdown formatting only"""
+    
+    system = "You are a market intelligence analyst. Synthesize information into actionable insights. Use clear, professional language without error messages or problematic formatting."
+    content = client.complete(prompt, system, temperature=0.7)
+    return sanitize_report_content(content)
+
+@st.cache_data(ttl=86400, show_spinner=False)  # Cache for 24 hours (1 day)
+def cached_generate_daily_report(brief_dict: dict, sections_data: List[dict], openrouter_key: str, model_name: str, date_key: str) -> str:
+    """Generate complete final report cached by day - same query on same day returns identical report"""
+    brief = ResearchBrief.model_validate(brief_dict)
+    sections = [SectionContent.model_validate(s) for s in sections_data]
+    client = OpenRouterClient(openrouter_key, model_name)
+    
+    sections_text = "\n\n".join([
+        f"## {s.title}\n\n{sanitize_report_content(s.content)}" for s in sections
+    ])
+    
+    # Generate report content
+    prompt = f"""Create a professional market intelligence report.
+
+Research Objective: {brief.objective}
+
+Sections Content:
+{sections_text}
+
+Write an Executive Summary and Strategic Recommendations to complete the report.
+
+IMPORTANT: 
+- Use clear, professional language
+- Avoid using words like "ERROR", "error", or "Error" in your response
+- Focus on insights and recommendations
+- Use standard markdown formatting only"""
+    
+    system = "You are a senior business analyst. Create executive-level reports with clear, professional language. Never include error messages or problematic formatting in your response."
+    
+    report_parts = client.complete(prompt, system, temperature=0.6)
+    report_parts = sanitize_report_content(report_parts)
+    
+    # Compile final report with fixed daily timestamp
+    # Parse the date_key back to create a consistent timestamp for the day
+    date_obj = datetime.strptime(date_key, '%Y-%m-%d')
+    # Use a fixed time (9:00 AM) for consistency within the day
+    fixed_time = date_obj.replace(hour=9, minute=0, second=0)
+    
+    report = f"# Market Intelligence Report\n## {brief.objective}\n\n"
+    report += f"**Generated on {fixed_time.strftime('%Y-%m-%d %H:%M')}**\n\n"
+    report += report_parts + "\n\n"
+    report += sections_text + "\n\n"
+    
+    # Add sources with proper URL validation
+    report += "\n## Sources\n\n"
+    seen_urls = set()
+    source_count = 1
+    
+    for section in sections:
+        for source in section.sources:
+            url = validate_and_encode_url(source.get('url', ''))
+            if url and url not in seen_urls:
+                seen_urls.add(url)
+                title = clean_source_title(source.get('title', ''))
+                report += f"{source_count}. [{title}]({url})\n"
+                source_count += 1
+    
+    if source_count == 1:
+        report += "*No valid sources available.*\n"
+    
+    return sanitize_report_content(report)
+
+def cached_generate_final_report(brief_dict: dict, sections_data: List[dict], openrouter_key: str, model_name: str) -> str:
+    """Generate final report with day-level caching"""
+    # Create a date key for today
+    today = datetime.now().strftime('%Y-%m-%d')
+    
+    # Use the daily cached function
+    return cached_generate_daily_report(brief_dict, sections_data, openrouter_key, model_name, today)
+
+# ============= Cache Management Utilities =============
+def clear_all_research_caches():
+    """Clear all cached research data for fresh results"""
+    cached_generate_brief.clear()
+    cached_create_research_plan.clear()
+    cached_tavily_search.clear()
+    cached_synthesize_section.clear()
+    cached_generate_daily_report.clear()
 
 # ============= API Clients =============
 class OpenRouterClient:
@@ -187,44 +405,19 @@ class ResearchAgent:
         self.search = TavilySearchClient(config.tavily_api_key)
         
     async def generate_brief(self, topic: str) -> ResearchBrief:
-        """Generate research brief"""
-        prompt = f"""Create a focused research brief for: {topic}
-
-Return a JSON object with these fields:
-- objective: Clear research goal (string)
-- key_questions: 3-4 specific questions (array of strings)
-- scope: Research boundaries (string)  
-- expected_outcome: Expected deliverable (string)
-
-Topic: {topic}"""
-        
-        system = "You are a market research strategist. Return only valid JSON with simple strings and arrays."
-        
-        return self.llm.complete(prompt, system, temperature=0.3, 
-                                response_format=ResearchBrief)
+        """Generate research brief using cached function"""
+        result_dict = cached_generate_brief(topic, self.config.openrouter_api_key, self.config.model_name)
+        return ResearchBrief.model_validate(result_dict)
     
     async def create_research_plan(self, brief: ResearchBrief) -> ResearchPlan:
-        """Create research plan"""
-        prompt = f"""Create a research plan with {self.config.max_sections} sections.
-
-Objective: {brief.objective}
-Questions: {json.dumps(brief.key_questions)}
-
-Return JSON with:
-{{
-  "sections": [
-    {{
-      "title": "Section name",
-      "description": "What it covers", 
-      "search_queries": ["Query 1", "Query 2"]
-    }}
-  ]
-}}"""
-        
-        system = "You are a business intelligence researcher. Return only valid JSON."
-        
-        return self.llm.complete(prompt, system, temperature=0.5, 
-                                response_format=ResearchPlan)
+        """Create research plan using cached function"""
+        result_dict = cached_create_research_plan(
+            brief.model_dump(), 
+            self.config.max_sections,
+            self.config.openrouter_api_key,
+            self.config.model_name
+        )
+        return ResearchPlan.model_validate(result_dict)
     
     async def research_section(self, section: ResearchSection, 
                              brief: ResearchBrief) -> Tuple[SectionContent, Dict[str, List[Dict]]]:
@@ -233,12 +426,13 @@ Return JSON with:
         combined_content = []
         all_sources = []
         
-        # Execute searches
+        # Execute searches using cached function
         for query in section.search_queries[:self.config.max_queries_per_section]:
-            results = self.search.search(
-                query, 
+            results = cached_tavily_search(
+                query,
                 self.config.search_depth,
-                self.config.max_search_results
+                self.config.max_search_results,
+                self.config.tavily_api_key
             )
             all_results[query] = results
             
@@ -250,21 +444,14 @@ Return JSON with:
                     'query': query
                 })
         
-        # Synthesize content
-        prompt = f"""Write a comprehensive section for a market intelligence report.
-
-Section: {section.title}
-Description: {section.description}
-Research Objective: {brief.objective}
-
-Based on these search results:
-{chr(10).join(combined_content[:8])}
-
-Write 2-3 detailed paragraphs with specific insights and business implications."""
-        
-        system = "You are a market intelligence analyst. Synthesize information into actionable insights."
-        
-        content = self.llm.complete(prompt, system, temperature=0.7)
+        # Synthesize content using cached function
+        content = cached_synthesize_section(
+            section.model_dump(),
+            brief.model_dump(),
+            chr(10).join(combined_content[:8]),
+            self.config.openrouter_api_key,
+            self.config.model_name
+        )
         
         return SectionContent(
             title=section.title,
@@ -274,40 +461,14 @@ Write 2-3 detailed paragraphs with specific insights and business implications."
     
     async def generate_final_report(self, brief: ResearchBrief, 
                                    sections: List[SectionContent]) -> str:
-        """Generate final report"""
-        sections_text = "\n\n".join([
-            f"## {s.title}\n\n{s.content}" for s in sections
-        ])
-        
-        prompt = f"""Create a professional market intelligence report.
-
-Research Objective: {brief.objective}
-
-Sections Content:
-{sections_text}
-
-Write an Executive Summary and Strategic Recommendations to complete the report."""
-        
-        system = "You are a senior business analyst. Create executive-level reports."
-        
-        report_parts = self.llm.complete(prompt, system, temperature=0.6)
-        
-        # Compile final report
-        report = f"# Market Intelligence Report\n## {brief.objective}\n\n"
-        report += f"*Generated on {datetime.now().strftime('%Y-%m-%d %H:%M')}*\n\n"
-        report += report_parts + "\n\n"
-        report += sections_text + "\n\n"
-        
-        # Add sources
-        report += "\n## Sources\n\n"
-        seen_urls = set()
-        for section in sections:
-            for source in section.sources:
-                if source['url'] not in seen_urls:
-                    seen_urls.add(source['url'])
-                    report += f"- [{source['title']}]({source['url']})\n"
-        
-        return report
+        """Generate final report using cached function"""
+        sections_data = [s.model_dump() for s in sections]
+        return cached_generate_final_report(
+            brief.model_dump(),
+            sections_data,
+            self.config.openrouter_api_key,
+            self.config.model_name
+        )
 
 # ============= UI Functions =============
 def init_session_state():
@@ -488,22 +649,27 @@ def check_api_status(config: ResearchConfig) -> Dict[str, bool]:
 
 def render_research_interface():
     """Render main research interface"""
-    state = st.session_state.research_state
-    
     # Always show input interface
     render_research_input()
     
-    # Show results if research is complete
-    if (state.phase == ResearchPhase.COMPLETE and state.final_report):
+    # Show results if research is complete - simplified check like working examples
+    if ('research_state' in st.session_state and 
+        st.session_state.research_state and
+        hasattr(st.session_state.research_state, 'phase') and 
+        hasattr(st.session_state.research_state, 'final_report') and
+        st.session_state.research_state.phase == ResearchPhase.COMPLETE and 
+        st.session_state.research_state.final_report):
+        
         st.divider()
         st.markdown("## Research Results")
-        render_complete_state(state)
+        render_complete_state(st.session_state.research_state)
         
         # New research button
         st.markdown("---")
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
-            if st.button("Start New Research", type="secondary", use_container_width=True):
+            if st.button("Start New Research", type="secondary", use_container_width=True, key="new_research_btn"):
+                # Clear the old state and create a new one
                 st.session_state.research_state = ResearchState()
 
 def render_research_input():
@@ -563,7 +729,9 @@ def render_complete_state(state: ResearchState):
     
     with tab1:
         if state.final_report:
-            st.markdown(state.final_report)
+            # Apply additional sanitization for display
+            display_report = sanitize_report_content(state.final_report)
+            st.markdown(display_report)
         else:
             st.error("No report content available.")
         
@@ -571,7 +739,7 @@ def render_complete_state(state: ResearchState):
         st.download_button(
             label="📄 Download Report (Markdown)",
             data=state.final_report if state.final_report else "",
-            file_name=f"market_intelligence_{datetime.now().strftime('%Y%m%d_%H%M')}.md",
+            file_name="market_intelligence_report.md",
             mime="text/markdown",
             use_container_width=True
         )
@@ -580,11 +748,20 @@ def render_complete_state(state: ResearchState):
         st.markdown("### Research Sections")
         for i, section in enumerate(state.sections, 1):
             with st.expander(f"Section {i}: {section.title}", expanded=False):
-                st.markdown(section.content)
+                # Sanitize section content before display
+                sanitized_content = sanitize_report_content(section.content)
+                st.markdown(sanitized_content)
+                
                 if section.sources:
                     st.markdown("**Sources:**")
                     for source in section.sources[:3]:
-                        st.markdown(f"- [{source['title']}]({source['url']})")
+                        url = validate_and_encode_url(source.get('url', ''))
+                        title = clean_source_title(source.get('title', ''))
+                        
+                        if url:
+                            st.markdown(f"- [{title}]({url})")
+                        else:
+                            st.markdown(f"- {title} (URL not available)")
     
     with tab3:
         st.markdown("### All Research Sources")
@@ -593,12 +770,19 @@ def render_complete_state(state: ResearchState):
         
         for section in state.sections:
             for source in section.sources:
-                if source['url'] not in seen_urls:
-                    seen_urls.add(source['url'])
-                    all_sources.append(source)
+                url = validate_and_encode_url(source.get('url', ''))
+                if url and url not in seen_urls:
+                    seen_urls.add(url)
+                    all_sources.append({
+                        'title': clean_source_title(source.get('title', '')),
+                        'url': url
+                    })
         
-        for i, source in enumerate(all_sources, 1):
-            st.markdown(f"{i}. [{source['title']}]({source['url']})")
+        if all_sources:
+            for i, source in enumerate(all_sources, 1):
+                st.markdown(f"{i}. [{source['title']}]({source['url']})")
+        else:
+            st.info("No valid sources available for this research.")
 
 # ============= Main App =============
 def main():

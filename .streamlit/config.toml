@@ -1,10 +1,10 @@
 # Enhanced enterprise color scheme
 [theme]
 base = "light"
-primaryColor = "#D97757"  # Claude's signature orange
-backgroundColor = "#F0EEE6"  # Subtle off-white background
-secondaryBackgroundColor = "#E3DACC"  # Pure white for cards/containers
-textColor = "#3D3A2A"  # Rich dark text
+primaryColor = "#bb5a38"  # Claude's signature orange
+backgroundColor = "#f4f3ed"  # Subtle off-white background
+secondaryBackgroundColor = "#ecebe3"  # Pure white for cards/containers
+textColor = "#3d3a2a"  # Rich dark text
 linkColor = "#3d3a2a"
 borderColor = "#d3d2ca"
 showWidgetBorder = true

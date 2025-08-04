@@ -3,6 +3,8 @@ openai
 duckduckgo-search
 python-dotenv
 pandas
+openpyxl
+pydantic
 requests
 beautifulsoup4
 pypdf
