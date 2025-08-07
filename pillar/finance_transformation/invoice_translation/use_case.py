@@ -21,6 +21,20 @@ class Translation(BaseModel):
     source_language: str
     target_language: str
 
+# Batch translation schemas
+class BatchItemResult(BaseModel):
+    index: int
+    original_text: str
+    translated_text: str
+    source_language_code: str
+    source_language_name: str
+    target_language_code: str
+    target_language_name: str
+    confidence: float
+
+class BatchTranslationResult(BaseModel):
+    items: List[BatchItemResult]
+
 # Configure the page
 st.set_page_config(
     page_title="Multi-Language Invoice Translation",
@@ -76,7 +90,7 @@ class InvoiceTranslator:
         try:
             # Language mapping for better detection
             language_info = {
-                'en': 'English', 'es': 'Spanish', 'fr': 'French', 'de': 'German', 'it': 'Italian',
+                'en': 'English', 'es': 'Spanish', 'es-419': 'Latin American Spanish', 'fr': 'French', 'de': 'German', 'it': 'Italian',
                 'pt': 'Portuguese', 'ru': 'Russian', 'ja': 'Japanese', 'ko': 'Korean',
                 'zh': 'Chinese', 'ar': 'Arabic', 'hi': 'Hindi', 'nl': 'Dutch',
                 'sv': 'Swedish', 'da': 'Danish', 'no': 'Norwegian', 'fi': 'Finnish',
@@ -155,7 +169,7 @@ class InvoiceTranslator:
 
             # Language mapping for better prompts
             language_names = {
-                'en': 'English', 'es': 'Spanish', 'fr': 'French', 'de': 'German', 'it': 'Italian',
+                'en': 'English', 'es': 'Spanish', 'es-419': 'Latin American Spanish', 'fr': 'French', 'de': 'German', 'it': 'Italian',
                 'pt': 'Portuguese', 'ru': 'Russian', 'ja': 'Japanese', 'ko': 'Korean',
                 'zh': 'Chinese', 'ar': 'Arabic', 'hi': 'Hindi', 'nl': 'Dutch',
                 'sv': 'Swedish', 'da': 'Danish', 'no': 'Norwegian', 'fi': 'Finnish',
@@ -164,8 +178,35 @@ class InvoiceTranslator:
             
             source_lang_name = language_names.get(source_code, source_name)
             target_lang_name = target_language_name or language_names.get(target_language_code, target_language_code)
+            target_code_lower = target_language_code.lower()
+
+            # Dialect-specific guidance
+            variant_instructions = ""
+            if target_code_lower in {"es-419", "es_419", "es-la", "es-latam"}:
+                variant_instructions = (
+                    "\nDialect requirements for Latin American Spanish (es-419):\n"
+                    "- Use neutral Latin American Spanish suitable for international business.\n"
+                    "- Prefer vocabulary like 'computadora' (not 'ordenador'), 'carro' (not 'coche'), 'celular' (not 'móvil'), 'jugo' (not 'zumo').\n"
+                    "- Avoid 'vosotros' forms; use 'ustedes' when second person plural is needed.\n"
+                )
+            elif target_code_lower == "es":
+                variant_instructions = (
+                    "\nDialect requirements for Spanish (es):\n"
+                    "- Use neutral/international Spanish appropriate for Spain and general audiences.\n"
+                    "- Prefer vocabulary like 'ordenador', 'coche', 'móvil', 'zumo' when such terms occur.\n"
+                )
+
+            # Identifier and short token handling
+            identifier_instructions = (
+                "\nSpecial handling for identifiers and short tokens:\n"
+                "- The input may be a field/variable name or a very short label (even a single word). Always translate such labels when they are meaningful domain terms (e.g., 'subtotal', 'due_date').\n"
+                "- If the text looks like an identifier in snake_case, kebab-case, camelCase, PascalCase, or SCREAMING_SNAKE_CASE: translate the constituent words into the target language while preserving the original separators and casing pattern.\n"
+                "  Example: 'invoice_date' -> 'fecha_de_factura'; 'billingAddress' -> 'direccionDeFacturacion'.\n"
+                "- Preserve untranslatable tokens such as IDs, SKUs, part numbers, alphanumeric codes (e.g., 'PO-10023', 'AB12'), email addresses, and URLs exactly as-is.\n"
+                "- Never refuse translation due to short length; do your best disambiguation from context.\n"
+            )
             
-            system_prompt = f"""You are a professional translator. 
+            system_prompt = f"""You are a professional translator.
             Your task is to translate the given text from {source_lang_name} to {target_lang_name} while:
             1. Maintaining the exact meaning and context
             2. Using natural, fluent {target_lang_name}
@@ -173,6 +214,8 @@ class InvoiceTranslator:
             4. Keeping numbers and special characters intact
             5. Preserving all the numbers strictly without changing the commas and decimals
             6. Do not add any markdown formatting or code blocks
+            {variant_instructions}
+            {identifier_instructions}
             
             Return the response in the following format:
             - original_text: The original input text
@@ -200,9 +243,11 @@ class InvoiceTranslator:
                 
             except Exception:
                 # Fallback to simple translation if structured output fails
-                simple_prompt = f"""You are a professional translator. 
+                simple_prompt = f"""You are a professional translator.
                 Translate the following text from {source_lang_name} to {target_lang_name}.
                 Maintain exact meaning, preserve formatting and numbers.
+                {variant_instructions}
+                {identifier_instructions}
                 Respond with only the translated text, no additional formatting."""
                 
                 response = self.client.chat.completions.create(
@@ -226,38 +271,161 @@ class InvoiceTranslator:
 
     def translate_batch(self, texts: List[str], target_language_code: str, target_language_name: str) -> List[Dict]:
         """
-        Translate a batch of texts to target language
+        Translate a list of texts to the target language using fixed-size chunks.
+        Uses a single structured call per chunk for efficiency and consistency.
         """
-        results = []
-        
-        for text in texts:
+        FIXED_BATCH_SIZE = 20
+        results: List[Dict] = []
+
+        # Pre-allocate placeholder results to preserve order
+        results = [None] * len(texts)
+
+        # Identify non-empty items and handle empties up-front
+        non_empty_items = []  # list of tuples (idx, text)
+        for idx, text in enumerate(texts):
             if pd.isna(text) or str(text).strip() == '':
-                results.append({
+                results[idx] = {
                     'translated_text': '',
                     'source_code': '',
                     'source_name': '',
                     'confidence': 0.0
-                })
+                }
             else:
-                try:
-                    translated, source_code, source_name, confidence = self.translate_text(
-                        str(text), target_language_code, target_language_name
-                    )
-                    results.append({
-                        'translated_text': translated,
-                        'source_code': source_code,
-                        'source_name': source_name,
-                        'confidence': confidence
-                    })
-                except Exception as e:
-                    st.warning(f"Failed to translate text: {str(text)[:50]}... Error: {str(e)}")
-                    results.append({
-                        'translated_text': str(text),  # Keep original if translation fails
-                        'source_code': 'unknown',
-                        'source_name': 'Unknown',
+                non_empty_items.append((idx, str(text)))
+
+        # Nothing to translate
+        if not non_empty_items:
+            # Replace None placeholders (if any remain) with safe defaults
+            for i in range(len(results)):
+                if results[i] is None:
+                    results[i] = {
+                        'translated_text': '',
+                        'source_code': '',
+                        'source_name': '',
                         'confidence': 0.0
-                    })
-        
+                    }
+            return results
+
+        # Prepare common instructions (dialect + identifiers) similar to single translation
+        target_code_lower = target_language_code.lower()
+        variant_instructions = ""
+        if target_code_lower in {"es-419", "es_419", "es-la", "es-latam"}:
+            variant_instructions = (
+                "\nDialect requirements for Latin American Spanish (es-419):\n"
+                "- Use neutral Latin American Spanish suitable for international business.\n"
+                "- Prefer vocabulary like 'computadora' (not 'ordenador'), 'carro' (not 'coche'), 'celular' (not 'móvil'), 'jugo' (not 'zumo').\n"
+                "- Avoid 'vosotros' forms; use 'ustedes' when second person plural is needed.\n"
+            )
+        elif target_code_lower == "es":
+            variant_instructions = (
+                "\nDialect requirements for Spanish (es):\n"
+                "- Use neutral/international Spanish appropriate for Spain and general audiences.\n"
+                "- Prefer vocabulary like 'ordenador', 'coche', 'móvil', 'zumo' when such terms occur.\n"
+            )
+
+        identifier_instructions = (
+            "\nSpecial handling for identifiers and short tokens:\n"
+            "- The input may be a field/variable name or a very short label (even a single word). Always translate such labels when they are meaningful domain terms (e.g., 'subtotal', 'due_date').\n"
+            "- If the text looks like an identifier in snake_case, kebab-case, camelCase, PascalCase, or SCREAMING_SNAKE_CASE: translate the constituent words into the target language while preserving the original separators and casing pattern.\n"
+            "  Example: 'invoice_date' -> 'fecha_de_factura'; 'billingAddress' -> 'direccionDeFacturacion'.\n"
+            "- Preserve untranslatable tokens such as IDs, SKUs, part numbers, alphanumeric codes (e.g., 'PO-10023', 'AB12'), email addresses, and URLs exactly as-is.\n"
+            "- Never refuse translation due to short length; do your best disambiguation from context.\n"
+        )
+
+        system_prompt = f"""You are a professional translator.
+        You will receive a list of items to translate to {target_language_name}. For each item:
+        - Detect the source language
+        - Translate to {target_language_name} with high accuracy
+        - Preserve formatting and all numbers (commas/decimals must not change)
+        - Do not add any markdown formatting or code blocks
+        {variant_instructions}
+        {identifier_instructions}
+
+        Return a JSON object with an array of items. Each item must contain:
+        - index: input item index
+        - original_text
+        - translated_text
+        - source_language_code (ISO 639-1 when applicable)
+        - source_language_name
+        - target_language_code
+        - target_language_name
+        - confidence (0.0 to 1.0)
+        """
+
+        # Process in fixed-size chunks
+        for start in range(0, len(non_empty_items), FIXED_BATCH_SIZE):
+            chunk = non_empty_items[start:start + FIXED_BATCH_SIZE]
+
+            # Build user payload
+            payload_items = [{"index": idx, "text": txt} for idx, txt in chunk]
+            user_message = (
+                "Translate the following items. Return JSON matching the schema.\n" 
+                f"Target language: {target_language_name} ({target_language_code})\n\n"
+                f"Items: {payload_items}"
+            )
+
+            try:
+                response = self.client.chat.completions.create(
+                    model="google/gemini-2.5-flash-lite",
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_message}
+                    ],
+                    response_format={
+                        "type": "json_schema",
+                        "json_schema": {
+                            "name": "batch_translation",
+                            "schema": BatchTranslationResult.model_json_schema()
+                        }
+                    },
+                    extra_headers={
+                        "HTTP-Referer": "https://hr-copilot.streamlit.app",
+                        "X-Title": "Invoice Translation Tool",
+                    }
+                )
+
+                parsed = BatchTranslationResult.model_validate_json(response.choices[0].message.content)
+                for item in parsed.items:
+                    # Guard: index must be valid
+                    if 0 <= item.index < len(results):
+                        results[item.index] = {
+                            'translated_text': item.translated_text,
+                            'source_code': item.source_language_code,
+                            'source_name': item.source_language_name,
+                            'confidence': float(item.confidence),
+                        }
+            except Exception as e:
+                # Fallback to per-item translation for this chunk
+                for idx, txt in chunk:
+                    try:
+                        translated, source_code, source_name, confidence = self.translate_text(
+                            str(txt), target_language_code, target_language_name
+                        )
+                        results[idx] = {
+                            'translated_text': translated,
+                            'source_code': source_code,
+                            'source_name': source_name,
+                            'confidence': confidence
+                        }
+                    except Exception as inner_e:
+                        st.warning(f"Failed to translate text: {str(txt)[:50]}... Error: {str(inner_e)}")
+                        results[idx] = {
+                            'translated_text': str(txt),
+                            'source_code': 'unknown',
+                            'source_name': 'Unknown',
+                            'confidence': 0.0
+                        }
+
+        # Replace any remaining None with safe defaults (shouldn't happen, but just in case)
+        for i in range(len(results)):
+            if results[i] is None:
+                results[i] = {
+                    'translated_text': '',
+                    'source_code': '',
+                    'source_name': '',
+                    'confidence': 0.0
+                }
+
         return results
 
 # Initialize session state
@@ -501,7 +669,7 @@ def handle_single_document_mode(translator):
     with col1:
         st.markdown("**Target Language:**")
         languages = {
-            'English': 'en', 'Spanish': 'es', 'French': 'fr', 'German': 'de', 'Italian': 'it',
+            'English': 'en', 'Spanish': 'es', 'Spanish (Latin America)': 'es-419', 'French': 'fr', 'German': 'de', 'Italian': 'it',
             'Portuguese': 'pt', 'Russian': 'ru', 'Japanese': 'ja', 'Korean': 'ko',
             'Chinese': 'zh', 'Arabic': 'ar', 'Hindi': 'hi', 'Dutch': 'nl',
             'Swedish': 'sv', 'Danish': 'da', 'Norwegian': 'no', 'Finnish': 'fi',
@@ -712,7 +880,7 @@ def render_batch_configuration(df):
     with col2:
         # Target language selection
         languages = {
-            'English': 'en', 'Spanish': 'es', 'French': 'fr', 'German': 'de', 'Italian': 'it',
+            'English': 'en', 'Spanish': 'es', 'Spanish (Latin America)': 'es-419', 'French': 'fr', 'German': 'de', 'Italian': 'it',
             'Portuguese': 'pt', 'Russian': 'ru', 'Japanese': 'ja', 'Korean': 'ko',
             'Chinese': 'zh', 'Arabic': 'ar', 'Hindi': 'hi', 'Dutch': 'nl',
             'Swedish': 'sv', 'Danish': 'da', 'Norwegian': 'no', 'Finnish': 'fi',
