@@ -819,7 +819,7 @@ def handle_batch_mode(translator):
                         progress_bar.progress(100, text="Translation complete!")
                         progress_bar.empty()
                         
-                        st.success(f"Batch translation completed! Translated {total_texts} rows to {target_language_name}.")
+                        #st.success(f"Batch translation completed! Translated {total_texts} rows to {target_language_name}.")
                         
                     except Exception as e:
                         st.error(f"Batch translation failed: {str(e)}")
@@ -916,7 +916,7 @@ def render_batch_results(result_df, original_filename):
     """Render batch translation results"""
     st.markdown('<div class="arsenal-title">Translation Results</div>', unsafe_allow_html=True)
     
-    st.success(f"Translation completed! Processed {len(result_df)} rows.")
+    #st.success(f"Translation completed! Processed {len(result_df)} rows.")
     
     # Show preview of results
     with st.expander("Preview Results", expanded=True):
